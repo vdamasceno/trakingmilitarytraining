@@ -1,0 +1,29 @@
+# .gitignore para React/Vite
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Pasta de dependências
+node_modules
+
+# Pasta de build do Vite
+dist
+dist-ssr
+
+# Arquivos de ambiente (se usar no frontend)
+.env
+.env.*
+!.env.example
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de cache/temporários do Vite
+.vite
+coverage
