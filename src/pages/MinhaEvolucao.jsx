@@ -54,8 +54,12 @@ export default function MinhaEvolucao() {
   const [erro, setErro] = useState(null);
 
   useEffect(() => {
-    apiClient.get('/usuarios/me/historico') // Chama a nova rota
+    // Adiciona um log para saber se a busca começou
+    console.log("Buscando histórico..."); 
+    apiClient.get('/usuarios/me/historico')
       .then(response => {
+        // Adiciona um log para ver os dados recebidos
+        console.log("Histórico recebido:", response.data); 
         setHistorico(response.data);
       })
       .catch(error => {
@@ -63,10 +67,16 @@ export default function MinhaEvolucao() {
         setErro("Falha ao carregar dados de evolução.");
       })
       .finally(() => {
+         // Adiciona um log para saber quando a busca terminou
+        console.log("Busca de histórico finalizada.");
         setCarregando(false);
       });
   }, []);
 
+  // Log para ver o estado atual antes de renderizar
+  console.log("Renderizando MinhaEvolucao:", { carregando, erro, historicoLength: historico.length });
+
+  // 1. Renderiza "Carregando" primeiro
   if (carregando) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
@@ -76,22 +86,32 @@ export default function MinhaEvolucao() {
     );
   }
 
+  // 2. Renderiza erro, se houver
   if (erro) {
     return <Alert severity="error">{erro}</Alert>;
   }
 
-  if (historico.length < 2) { // Precisa de pelo menos 2 pontos para um gráfico de linha
-    return <Typography variant="h6">Registre pelo menos dois TACFs com dados completos para visualizar sua evolução.</Typography>;
+  // 3. Renderiza mensagem se não houver dados suficientes APÓS carregar
+  if (!carregando && historico.length < 2) {
+    return (
+        <Box sx={{mt: 4}}>
+             <Typography variant="h6">
+                Registre pelo menos dois TAFs com dados completos para visualizar sua evolução.
+             </Typography>
+        </Box>
+    );
   }
 
+  // 4. Se passou por tudo, renderiza os gráficos
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
         Minha Evolução no TAF
       </Typography>
-
+      
+      {/* O Grid só é renderizado DEPOIS que 'carregando' é false e temos dados */}
       <Grid container spacing={3} sx={{ mt: 2 }}>
-
+        
         {/* Gráfico de Peso */}
         <Grid item xs={12} md={6}>
           <GraficoEvolucao 

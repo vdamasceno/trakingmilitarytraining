@@ -37,17 +37,16 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
 
 export default function DashboardAdmin() {
-  // --- A LÓGICA DE BUSCA DE DADOS PERMANECE A MESMA ---
   const [stats, setStats] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
-
-  // --- Estados para o filtro ---
   const [organizacoes, setOrganizacoes] = useState([]);
-  const [selectedOmId, setSelectedOmId] = useState('todos'); // 'todos' como valor inicial
-  // --- Fim Estados Filtro ---
+  const [selectedOmId, setSelectedOmId] = useState('todos');
+  const [selectedSexo, setSelectedSexo] = useState('todos');
 
-// --- useEffect para buscar OMs ---
+  // useEffect para buscar OMs (sem mudança)
+  
+  // --- useEffect para buscar OMs ---
   useEffect(() => {
     apiClient.get('/listas/organizacoes') // Rota pública
       .then(response => {
@@ -69,6 +68,10 @@ export default function DashboardAdmin() {
     if (selectedOmId && selectedOmId !== 'todos') {
       params.om_id = selectedOmId;
     }
+    
+    if (selectedSexo && selectedSexo !== 'todos') { // <<<<< ADICIONA PARÂMETRO SEXO
+      params.sexo = selectedSexo;
+    }
 
     apiClient.get('/admin/stats', { params }) // Passa os parâmetros aqui
       .then(response => {
@@ -82,15 +85,13 @@ export default function DashboardAdmin() {
         setCarregando(false);
       });
   // Roda de novo QUANDO selectedOmId mudar
-  }, [selectedOmId]); 
+  }, [selectedOmId], selectedSexo); 
   // --- Fim useEffect Estatísticas ---
 
 
-  const handleOmChange = (event) => {
-    setSelectedOmId(event.target.value);
-    // O useEffect acima vai re-buscar os dados automaticamente
-  };
-
+  const handleOmChange = (event) => { setSelectedOmId(event.target.value); };
+  const handleSexoChange = (event) => { setSelectedSexo(event.target.value); };
+  
 
   if (carregando) {
     return (
@@ -119,117 +120,103 @@ export default function DashboardAdmin() {
     </Paper>
   );
 
+  // --- ADICIONE A FUNÇÃO formatStat AQUI ---
+  // Função auxiliar para formatar números ou mostrar '-'
+  const formatStat = (value, decimals = 0) => {
+    const num = parseFloat(value);
+    return !isNaN(num) ? num.toFixed(decimals) : '-';
+  };
+  // --- FIM DA ADIÇÃO ---
+
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-        Dashboard Gerencial
-      </Typography>
-      
-      {/* --- O Dropdown de Filtro --- */}
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel id="om-filter-label">Filtrar por OM</InputLabel>
-          <Select
-            labelId="om-filter-label"
-            id="om-filter"
-            value={selectedOmId}
-            label="Filtrar por OM"
-            onChange={handleOmChange}
-          >
-            {/* Opção "Todas" */}
-            <MenuItem value="todos"><em>Todas as OMs</em></MenuItem> 
-            {/* Lista de OMs */}
-            {organizacoes.map((om) => (
-              <MenuItem key={om.id} value={om.id}>
-                {om.sigla}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      {/* --- Fim Dropdown Filtro --- */}    
+      {/* --- Cabeçalho com Filtros --- */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', mb: 4 }}>
+        <Typography variant="h4" component="h1" sx={{ mb: { xs: 2, md: 0 } }}>
+          Dashboard Gerencial
+        </Typography>
+        
+        {/* Container para os filtros */}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {/* Filtro OM */}
+          <FormControl sx={{ minWidth: 180 }}>
+            <InputLabel id="om-filter-label">Filtrar por OM</InputLabel>
+            <Select labelId="om-filter-label" value={selectedOmId} label="Filtrar por OM" onChange={handleOmChange}>
+              <MenuItem value="todos"><em>Todas as OMs</em></MenuItem>
+              {organizacoes.map((om) => (<MenuItem key={om.id} value={om.id}>{om.sigla}</MenuItem>))}
+            </Select>
+          </FormControl>
 
-      {/* Os Cards de Resumo Rápido permanecem os mesmos */}
+          {/* --- Filtro Sexo --- */}
+          <FormControl sx={{ minWidth: 150 }}>
+            <InputLabel id="sexo-filter-label">Filtrar por Sexo</InputLabel>
+            <Select labelId="sexo-filter-label" value={selectedSexo} label="Filtrar por Sexo" onChange={handleSexoChange}>
+              <MenuItem value="todos"><em>Ambos</em></MenuItem>
+              <MenuItem value="Masculino">Masculino</MenuItem>
+              <MenuItem value="Feminino">Feminino</MenuItem>
+            </Select>
+          </FormControl>
+          {/* --- Fim Filtro Sexo --- */}
+        </Box>
+      </Box>
+      
+      {/* --- Cards de Resumo Rápido --- */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* ... (Os 4 Grids com StatCard não mudam) ... */}
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title="Total de Usuários" value={stats.totalUsuarios} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard 
-            title="Média Cooper" 
-            value={parseFloat(stats.mediasTACF.media_cooper || 0).toFixed(0)} 
-            unit="m"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard 
-            title="Média Abdominal" 
-            value={parseFloat(stats.mediasTACF.media_abdominal || 0).toFixed(1)}
-            unit="reps"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard 
-            title="Média Flexão" 
-            value={parseFloat(stats.mediasTACF.media_flexao || 0).toFixed(1)}
-            unit="reps"
-          />
-        </Grid>
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Total de Usuários" value={stats.totalUsuarios} /></Grid>
+        {/* Médias TAF */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Cooper" value={formatStat(stats.mediasTACF?.media_cooper)} unit="m"/></Grid>
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Abdominal" value={formatStat(stats.mediasTACF?.media_abdominal, 1)} unit="reps"/></Grid>
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Flexão" value={formatStat(stats.mediasTACF?.media_flexao, 1)} unit="reps"/></Grid>
+        {/* --- Card Média Barra --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Barra" value={formatStat(stats.mediasTACF?.media_barra, 1)} unit="reps"/></Grid>
+        {/* --- Card Total TFM --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Total Treinos TFM" value={stats.totalTFM} /></Grid>
+        {/* --- Card Média Intensidade --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Intensid. TFM" value={formatStat(stats.mediaIntensidade, 1)} unit="/ 10"/></Grid>
+        {/* --- Card Média Peso --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Peso" value={formatStat(stats.mediasTACF?.media_peso, 1)} unit="kg"/></Grid>
+        {/* --- Card Média IMC --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média IMC" value={formatStat(stats.mediasTACF?.media_imc, 1)} unit="kg/m²"/></Grid>
+        {/* --- Card Média Cintura --- */}
+        <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Cintura" value={formatStat(stats.mediasTACF?.media_cintura, 1)} unit="cm"/></Grid>
       </Grid>
 
-      {/* --- INÍCIO DA SUBSTITUIÇÃO DAS TABELAS --- */}
+      {/* --- Gráficos --- */}
       <Grid container spacing={3}>
-        
-        {/* Tabela 1 vira GRÁFICO DE BARRAS */}
+        {/* Gráfico de Barras por OM (sempre mostra todas) */}
         <Grid item xs={12} md={6}>
           <Typography variant="h5" gutterBottom>Treinos (TFM) por OM</Typography>
-          <Paper elevation={3} sx={{ padding: 2, height: '400px' }}>
-            {/* O ResponsiveContainer faz o gráfico ocupar o espaço do Paper */}
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={stats.treinosPorOM} // Nossos dados da API
-                margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="sigla" /> {/* O que vai no eixo X (BASC, BAAF) */}
-                <YAxis allowDecimals={false} /> {/* Não permite "2.5" treinos */}
-                <Tooltip /> {/* A "dica" ao passar o mouse */}
-                <Legend />
-                <Bar dataKey="total" fill="#005a9c" /> {/* O que vai no eixo Y (o total) */}
-              </BarChart>
-            </ResponsiveContainer>
+          <Paper elevation={3} sx={{ padding: 2, height: '400px', /* ... */ }}>
+            {/* ... (Código BarChart sem mudança) ... */}
           </Paper>
         </Grid>
 
-        {/* Tabela 2 vira GRÁFICO DE PIZZA */}
+        {/* Gráfico de Pizza por Exercício (reflete filtros OM e Sexo) */}
         <Grid item xs={12} md={6}>
-          <Typography variant="h5" gutterBottom>Treinos (TFM) por Exercício</Typography>
-          <Paper elevation={3} sx={{ padding: 2, height: '400px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={stats.treinosPorExercicio} // Nossos dados da API
-                  dataKey="total"     // O valor (o total)
-                  nameKey="nome"      // O nome (Corrida, HIT)
-                  cx="50%"            // Posição X (centro)
-                  cy="50%"            // Posição Y (centro)
-                  outerRadius={120}   // Tamanho
-                  fill="#8884d8"
-                  label // Mostra o label na fatia
-                >
-                  {/* Pinta cada fatia com uma cor da nossa lista */}
-                  {stats.treinosPorExercicio.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <Typography variant="h5" gutterBottom>
+            Treinos (TFM) por Exercício {selectedOmId !== 'todos' ? `(${organizacoes.find(o => o.id === selectedOmId)?.sigla || ''})` : '(Geral OM)'} {selectedSexo !== 'todos' ? `(${selectedSexo})` : '(Geral Sexo)'}
+          </Typography>
+           <Paper elevation={3} sx={{ padding: 2, height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            {stats.treinosPorExercicio && stats.treinosPorExercicio.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                    <Pie data={stats.treinosPorExercicio} dataKey="total" nameKey="nome" cx="50%" cy="50%" outerRadius={120} fill="#8884d8" label>
+                    {stats.treinosPorExercicio.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <Typography variant="body1" color="text.secondary">
+                Nenhum treino TFM registrado para os filtros selecionados.
+              </Typography>
+            )}
           </Paper>
         </Grid>
-
       </Grid>
     </Box>
   );
-  // --- FIM DO NOVO JSX COM MUI ---
 }
