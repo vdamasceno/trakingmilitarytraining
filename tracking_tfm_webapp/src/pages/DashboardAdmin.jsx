@@ -1,4 +1,4 @@
-// src/pages/DashboardAdmin.jsx
+// src/pages/DashboardAdmin.jsx (Código Completo e Corrigido)
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
 
@@ -13,25 +13,12 @@ import {
   InputLabel,
   Select,
   MenuItem
-  // Não precisamos mais dos componentes de Tabela aqui
 } from '@mui/material';
 
-// --- INÍCIO DAS IMPORTAÇÕES DO RECHARTS ---
 import {
-  ResponsiveContainer, // Torna o gráfico responsivo
-  BarChart,            // O gráfico de barras
-  Bar,                 // As barras
-  PieChart,            // O gráfico de pizza
-  Pie,                 // A fatia da pizza
-  Cell,                // Para colorir as fatias
-  XAxis,               // Eixo X
-  YAxis,               // Eixo Y
-  CartesianGrid,       // As linhas de grade
-  Tooltip,             // A "dica" que aparece ao passar o mouse
-  Legend               // A legenda
+  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
-// --- FIM DAS IMPORTAÇÕES DO RECHARTS ---
-
 
 // Cores para o gráfico de pizza
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
@@ -40,40 +27,33 @@ export default function DashboardAdmin() {
   const [stats, setStats] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
+
+  // Estados para os filtros
   const [organizacoes, setOrganizacoes] = useState([]);
   const [selectedOmId, setSelectedOmId] = useState('todos');
-  const [selectedSexo, setSelectedSexo] = useState('todos');
+  const [selectedSexo, setSelectedSexo] = useState('todos'); 
 
-  // useEffect para buscar OMs (sem mudança)
-  
-  // --- useEffect para buscar OMs ---
+  // useEffect para buscar OMs
   useEffect(() => {
-    apiClient.get('/listas/organizacoes') // Rota pública
-      .then(response => {
-        setOrganizacoes(response.data);
-      })
-      .catch(error => {
-        console.error("Erro ao buscar OMs para filtro:", error);
-        // Não definimos erro aqui para não travar o dashboard se só o filtro falhar
-      });
-  }, []); // Roda só uma vez
+    apiClient.get('/listas/organizacoes')
+      .then(response => { setOrganizacoes(response.data); })
+      .catch(error => { console.error("Erro ao buscar OMs para filtro:", error); });
+  }, []);
 
-  // --- useEffect para buscar ESTATÍSTICAS (agora depende do filtro) ---
+  // useEffect para buscar ESTATÍSTICAS (depende de OM e Sexo)
   useEffect(() => {
     setCarregando(true);
     setErro(null);
 
-    // Define os parâmetros da query
     const params = {};
     if (selectedOmId && selectedOmId !== 'todos') {
       params.om_id = selectedOmId;
     }
-    
-    if (selectedSexo && selectedSexo !== 'todos') { // <<<<< ADICIONA PARÂMETRO SEXO
+    if (selectedSexo && selectedSexo !== 'todos') { 
       params.sexo = selectedSexo;
     }
 
-    apiClient.get('/admin/stats', { params }) // Passa os parâmetros aqui
+    apiClient.get('/admin/stats', { params }) 
       .then(response => {
         setStats(response.data);
       })
@@ -84,16 +64,15 @@ export default function DashboardAdmin() {
       .finally(() => {
         setCarregando(false);
       });
-  // Roda de novo QUANDO selectedOmId mudar
-  }, [selectedOmId], selectedSexo); 
-  // --- Fim useEffect Estatísticas ---
+  }, [selectedOmId, selectedSexo]); // Depende de ambos os filtros
 
 
+  // Handlers para mudança nos filtros
   const handleOmChange = (event) => { setSelectedOmId(event.target.value); };
-  const handleSexoChange = (event) => { setSelectedSexo(event.target.value); };
-  
+  const handleSexoChange = (event) => { setSelectedSexo(event.target.value); }; // Função que faltava
 
-  if (carregando) {
+  // Telas de Carregando, Erro, Sem Stats
+  if (carregando) { 
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
@@ -107,7 +86,7 @@ export default function DashboardAdmin() {
   if (!stats) { return <Typography variant="h5">Não foi possível carregar as estatísticas.</Typography>; }
 
   
-  // O StatCard permanece o mesmo
+  // Componente reutilizável para os cards de estatística
   const StatCard = ({ title, value, unit = '' }) => (
     <Paper elevation={3} sx={{ padding: 3, textAlign: 'center', height: '100%' }}>
       <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -120,13 +99,14 @@ export default function DashboardAdmin() {
     </Paper>
   );
 
-  // --- ADICIONE A FUNÇÃO formatStat AQUI ---
+  // --- FUNÇÃO QUE FALTAVA (formatStat) ---
   // Função auxiliar para formatar números ou mostrar '-'
   const formatStat = (value, decimals = 0) => {
     const num = parseFloat(value);
     return !isNaN(num) ? num.toFixed(decimals) : '-';
   };
-  // --- FIM DA ADIÇÃO ---
+  // --- FIM DA CORREÇÃO ---
+
 
   return (
     <Box>
@@ -156,42 +136,43 @@ export default function DashboardAdmin() {
               <MenuItem value="Feminino">Feminino</MenuItem>
             </Select>
           </FormControl>
-          {/* --- Fim Filtro Sexo --- */}
         </Box>
       </Box>
       
-      {/* --- Cards de Resumo Rápido --- */}
+      {/* --- Cards de Resumo Rápido (Agora usam formatStat) --- */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Total de Usuários" value={stats.totalUsuarios} /></Grid>
-        {/* Médias TAF */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Cooper" value={formatStat(stats.mediasTACF?.media_cooper)} unit="m"/></Grid>
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Abdominal" value={formatStat(stats.mediasTACF?.media_abdominal, 1)} unit="reps"/></Grid>
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Flexão" value={formatStat(stats.mediasTACF?.media_flexao, 1)} unit="reps"/></Grid>
-        {/* --- Card Média Barra --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Barra" value={formatStat(stats.mediasTACF?.media_barra, 1)} unit="reps"/></Grid>
-        {/* --- Card Total TFM --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Total Treinos TFM" value={stats.totalTFM} /></Grid>
-        {/* --- Card Média Intensidade --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Intensid. TFM" value={formatStat(stats.mediaIntensidade, 1)} unit="/ 10"/></Grid>
-        {/* --- Card Média Peso --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Peso" value={formatStat(stats.mediasTACF?.media_peso, 1)} unit="kg"/></Grid>
-        {/* --- Card Média IMC --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média IMC" value={formatStat(stats.mediasTACF?.media_imc, 1)} unit="kg/m²"/></Grid>
-        {/* --- Card Média Cintura --- */}
         <Grid item xs={12} sm={6} md={4} lg={2}><StatCard title="Média Cintura" value={formatStat(stats.mediasTACF?.media_cintura, 1)} unit="cm"/></Grid>
       </Grid>
 
       {/* --- Gráficos --- */}
       <Grid container spacing={3}>
-        {/* Gráfico de Barras por OM (sempre mostra todas) */}
+        {/* Gráfico de Barras por OM */}
         <Grid item xs={12} md={6}>
           <Typography variant="h5" gutterBottom>Treinos (TFM) por OM</Typography>
-          <Paper elevation={3} sx={{ padding: 2, height: '400px', /* ... */ }}>
-            {/* ... (Código BarChart sem mudança) ... */}
+          <Paper elevation={3} sx={{ padding: 2, height: '400px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.treinosPorOM} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="sigla" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="total" fill="#005a9c" name="Total de Treinos"/> 
+                </BarChart>
+              </ResponsiveContainer>
           </Paper>
         </Grid>
 
-        {/* Gráfico de Pizza por Exercício (reflete filtros OM e Sexo) */}
+        {/* Gráfico de Pizza por Exercício */}
         <Grid item xs={12} md={6}>
           <Typography variant="h5" gutterBottom>
             Treinos (TFM) por Exercício {selectedOmId !== 'todos' ? `(${organizacoes.find(o => o.id === selectedOmId)?.sigla || ''})` : '(Geral OM)'} {selectedSexo !== 'todos' ? `(${selectedSexo})` : '(Geral Sexo)'}
