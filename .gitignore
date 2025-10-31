@@ -19,6 +19,7 @@ build
 .env
 .env.*
 !.env.example
+node_modules
 
 # Arquivos do Sistema Operacional
 .DS_Store
