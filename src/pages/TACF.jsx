@@ -1,270 +1,433 @@
-// src/pages/TACF.jsx (Código Completo - Atualizado)
+// src/pages/TACF.jsx (Código Completo - Refatorado com validação)
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
+
+// --- NOVAS IMPORTAÇÕES PARA VALIDAÇÃO ---
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+// --- FIM DAS NOVAS IMPORTAÇÕES ---
+
+// --- Importações MUI ---
 import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Grid,
-  Paper,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton
+  Box, Button, TextField, Typography, Grid, Paper, Alert,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
+// --- 1. DEFINIÇÃO DO SCHEMA DE VALIDAÇÃO (ZOD) ---
+// Função auxiliar para transformar string vazia em 'undefined' para números opcionais
+const optionalNumeric = z.string().optional().transform(val => (val === "" ? undefined : val))
+  .refine(val => val === undefined || !isNaN(Number(val)), "Deve ser um número");
 
-// --- Atualizar formInicial ---
-const formInicial = {
-  data_teste: '',
-  peso: '', // <<<<< NOVO
-  altura: '', // <<<<< NOVO (em cm no form)
-  cintura: '', // <<<<< NOVO
-  cooper_distancia: '',
-  abdominal_reps: '',
-  flexao_reps: '',
-  barra_reps: ''
-};
+const tacfSchema = z.object({
+  data_teste: z.string().min(1, 'Data do Teste é obrigatória'),
+  
+  // Campos numéricos opcionais
+  peso: optionalNumeric,
+  altura: optionalNumeric,
+  cintura: optionalNumeric,
+  cooper_distancia: optionalNumeric,
+  abdominal_reps: optionalNumeric,
+  flexao_reps: optionalNumeric,
+  barra_reps: optionalNumeric,
+});
+// --- FIM DO SCHEMA ---
+
 
 export default function TACF() {
+  // Estados que NÃO são do formulário
   const [logs, setLogs] = useState([]);
-  const [formData, setFormData] = useState(formInicial);
-  const [editId, setEditId] = useState(null);
-  const [carregando, setCarregando] = useState(true);
-  const [erroForm, setErroForm] = useState(null);
-  const [sucessoForm, setSucessoForm] = useState(null);
+  const [editId, setEditId] = useState(null); // Guarda o ID do log que estamos editando
+  const [carregandoDados, setCarregandoDados] = useState(true); // Para o load inicial da tabela
+  const [erroApi, setErroApi] = useState(null);
+  const [sucessoApi, setSucessoApi] = useState(null);
 
+  // --- 2. CONFIGURAÇÃO DO REACT-HOOK-FORM ---
+  const {
+    control,
+    handleSubmit,
+    reset, // Para carregar dados na edição e limpar
+    formState: { errors, isSubmitting } // isSubmitting controla o estado de "Salvando..."
+  } = useForm({
+    resolver: zodResolver(tacfSchema),
+    defaultValues: {
+      data_teste: '',
+      peso: '',
+      altura: '',
+      cintura: '',
+      cooper_distancia: '',
+      abdominal_reps: '',
+      flexao_reps: '',
+      barra_reps: ''
+    }
+  });
+  // --- FIM DA CONFIGURAÇÃO ---
+
+
+  // Função para BUSCAR os TAFs
   const fetchTAFs = async () => {
     try {
-      setCarregando(true);
-      setErroForm(null); // Limpa erro ao recarregar
+      setCarregandoDados(true);
+      setErroApi(null);
       const response = await apiClient.get('/tacf');
       setLogs(response.data);
     } catch (error) {
       console.error("Erro ao buscar TAFs:", error);
-      setErroForm("Falha ao carregar histórico de TAFs.");
+      setErroApi("Falha ao carregar histórico de TAFs.");
     } finally {
-      setCarregando(false);
+      setCarregandoDados(false);
     }
   };
 
+  // Efeito que busca os TAFs quando a página carrega
   useEffect(() => {
     fetchTAFs();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
+  
+  // Handler para CANCELAR a edição
   const handleCancelEdit = () => {
     setEditId(null);
-    setFormData(formInicial);
-    setErroForm(null);
-    setSucessoForm(null);
+    reset(); // Limpa o formulário para os valores padrão
+    setErroApi(null);
+    setSucessoApi(null);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setCarregando(true);
-    setErroForm(null);
-    setSucessoForm(null);
+  // --- 3. FUNÇÃO DE SUBMIT (agora 'onSubmit') ---
+  // Chamada apenas se a validação do Zod passar
+  const onSubmit = async (data) => {
+    setErroApi(null);
+    setSucessoApi(null);
 
-    // --- Pegar os novos dados para envio ---
+    // Os dados já vêm do 'data' validados
     const dadosEnvio = {
-      data_teste: formData.data_teste,
-      peso: parseFloat(formData.peso) || null, // <<<<< NOVO
-      altura: parseFloat(formData.altura) || null, // <<<<< NOVO (enviar cm)
-      cintura: parseFloat(formData.cintura) || null, // <<<<< NOVO
-      cooper_distancia: parseInt(formData.cooper_distancia, 10) || null,
-      abdominal_reps: parseInt(formData.abdominal_reps, 10) || null,
-      flexao_reps: parseInt(formData.flexao_reps, 10) || null,
-      barra_reps: parseInt(formData.barra_reps, 10) || null,
+      data_teste: data.data_teste,
+      // Converte para número ou null (Zod já garantiu que é numérico ou undefined)
+      peso: data.peso ? parseFloat(data.peso) : null,
+      altura: data.altura ? parseFloat(data.altura) : null,
+      cintura: data.cintura ? parseFloat(data.cintura) : null,
+      cooper_distancia: data.cooper_distancia ? parseInt(data.cooper_distancia, 10) : null,
+      abdominal_reps: data.abdominal_reps ? parseInt(data.abdominal_reps, 10) : null,
+      flexao_reps: data.flexao_reps ? parseInt(data.flexao_reps, 10) : null,
+      barra_reps: data.barra_reps ? parseInt(data.barra_reps, 10) : null,
     };
 
     try {
       if (editId) {
-        await apiClient.put(`/tacf/${editId}`, dadosEnvio); // API recebe os novos dados
-        setSucessoForm("TAF atualizado com sucesso!");
+        // --- MODO EDIÇÃO ---
+        await apiClient.put(`/tacf/${editId}`, dadosEnvio);
+        setSucessoApi("TAF atualizado com sucesso!");
       } else {
-        await apiClient.post('/tacf', dadosEnvio); // API recebe os novos dados
-        setSucessoForm("TAF salvo com sucesso!");
+        // --- MODO CRIAÇÃO ---
+        await apiClient.post('/tacf', dadosEnvio);
+        setSucessoApi("TAF salvo com sucesso!");
       }
-      handleCancelEdit();
-      await fetchTAFs();
+      
+      handleCancelEdit(); // Limpa o formulário e o ID de edição
+      await fetchTAFs();  // Recarrega a lista da tabela
+
     } catch (error) {
       console.error("Erro ao salvar TAF:", error);
       let errorMsg = "Erro ao salvar. Verifique os dados.";
       if (error.response && error.response.data && error.response.data.message) {
         errorMsg = error.response.data.message;
       }
-      setErroForm(errorMsg);
-    } finally {
-      setCarregando(false);
+      setErroApi(errorMsg);
     }
   };
 
+  // --- 4. Handler para clicar em EDITAR na lista ---
   const handleEdit = (log) => {
-    setEditId(log.id);
+    setEditId(log.id); // Define o ID que estamos editando
     const dataFormatada = log.data_teste ? log.data_teste.split('T')[0] : '';
-
-    // --- Preencher novos campos no formulário ---
-    setFormData({
+    
+    // Preenche o formulário (react-hook-form) com os dados do log
+    reset({
       data_teste: dataFormatada,
-      peso: log.peso || '', // <<<<< NOVO
-      // Converte altura de metros (do banco) para cm (para o form)
-      altura: log.altura ? (parseFloat(log.altura) * 100).toString() : '', // <<<<< NOVO
-      cintura: log.cintura || '', // <<<<< NOVO
+      peso: log.peso || '',
+      altura: log.altura ? (parseFloat(log.altura) * 100).toString() : '', // Converte m -> cm
+      cintura: log.cintura || '',
       cooper_distancia: log.cooper_distancia || '',
       abdominal_reps: log.abdominal_reps || '',
       flexao_reps: log.flexao_reps || '',
       barra_reps: log.barra_reps || '',
     });
-
-    window.scrollTo(0, 0);
+    
+    window.scrollTo(0, 0); // Rola a página para o topo (onde está o formulário)
   };
 
+  // Handler para EXCLUIR (sem mudança na lógica, mas adiciona 'isSubmitting')
   const handleDelete = async (logId) => {
     if (window.confirm("Tem certeza que deseja excluir este registro de TAF?")) {
-      setCarregando(true); // Bloqueia botões durante a exclusão
-      setErroForm(null);
+      setErroApi(null);
       try {
         await apiClient.delete(`/tacf/${logId}`);
         await fetchTAFs(); // Recarrega a lista
       } catch (error) {
         console.error("Erro ao excluir TAF:", error);
-        setErroForm("Erro ao excluir o registro.");
-      } finally {
-        setCarregando(false);
+        setErroApi("Erro ao excluir o registro.");
       }
     }
   };
 
-  // --- Função para Calcular IMC ---
+  // Função para Calcular IMC (sem mudança)
   const calcularIMC = (peso, alturaMetros) => {
     if (!peso || !alturaMetros || parseFloat(alturaMetros) <= 0) return '-';
     try {
         const imc = parseFloat(peso) / (parseFloat(alturaMetros) * parseFloat(alturaMetros));
-        return imc.toFixed(2); // Retorna com 2 casas decimais
-    } catch {
-        return '-'; // Retorna '-' se houver erro no cálculo
-    }
+        return imc.toFixed(2);
+    } catch { return '-'; }
   };
+  // --- FIM DA LÓGICA ---
 
 
-  // --- Início do JSX ---
+  // --- 5. O JSX COM OS 'Controller's ---
   return (
     <Box>
       {/* --- Formulário --- */}
       <Paper elevation={3} sx={{ padding: { xs: 2, md: 4 }, marginBottom: 4 }}>
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
           <Typography variant="h5" component="h2" gutterBottom>
             {editId ? 'Editar Registro de TAF' : 'Inserir Novo TAF'}
           </Typography>
+          
           <Grid container spacing={3} sx={{ mt: 1 }}>
-
+            
             {/* Data */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField required fullWidth label="Data do Teste" name="data_teste" type="date" value={formData.data_teste} onChange={handleChange} InputLabelProps={{ shrink: true }} />
+              <Controller
+                name="data_teste"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    required
+                    fullWidth
+                    label="Data do Teste"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    error={!!errors.data_teste}
+                    helperText={errors.data_teste?.message}
+                  />
+                )}
+              />
             </Grid>
 
-            {/* --- Novos Campos: Peso, Altura, Cintura --- */}
+            {/* Peso */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Peso (kg)" name="peso" type="number" inputProps={{ step: "0.1", min: "0" }} value={formData.peso} onChange={handleChange} />
+              <Controller
+                name="peso"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Peso (kg)"
+                    type="number"
+                    inputProps={{ step: "0.1", min: "0" }}
+                    error={!!errors.peso}
+                    helperText={errors.peso?.message}
+                  />
+                )}
+              />
             </Grid>
+            
+            {/* Altura */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Altura (cm)" name="altura" type="number" inputProps={{ min: "0" }} value={formData.altura} onChange={handleChange} />
+              <Controller
+                name="altura"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Altura (cm)"
+                    type="number"
+                    inputProps={{ min: "0" }}
+                    error={!!errors.altura}
+                    helperText={errors.altura?.message}
+                  />
+                )}
+              />
             </Grid>
-             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Cintura (cm)" name="cintura" type="number" inputProps={{ step: "0.1", min: "0" }} value={formData.cintura} onChange={handleChange} />
-            </Grid>
-            {/* --- Fim Novos Campos --- */}
-
-            {/* Campos Antigos (Cooper, Abdominal, etc.) */}
+            
+            {/* Cintura */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Cooper - Distância (m)" name="cooper_distancia" type="number" inputProps={{ min: "0" }} value={formData.cooper_distancia} onChange={handleChange} />
+              <Controller
+                name="cintura"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Cintura (cm)"
+                    type="number"
+                    inputProps={{ step: "0.1", min: "0" }}
+                    error={!!errors.cintura}
+                    helperText={errors.cintura?.message}
+                  />
+                )}
+              />
             </Grid>
+            
+            {/* Cooper */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Abdominal (reps)" name="abdominal_reps" type="number" inputProps={{ min: "0" }} value={formData.abdominal_reps} onChange={handleChange} />
+              <Controller
+                name="cooper_distancia"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Cooper - Distância (m)"
+                    type="number"
+                    inputProps={{ min: "0" }}
+                    error={!!errors.cooper_distancia}
+                    helperText={errors.cooper_distancia?.message}
+                  />
+                )}
+              />
             </Grid>
+            
+            {/* Abdominal */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Flexão de Braços (reps)" name="flexao_reps" type="number" inputProps={{ min: "0" }} value={formData.flexao_reps} onChange={handleChange} />
+              <Controller
+                name="abdominal_reps"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Abdominal (reps)"
+                    type="number"
+                    inputProps={{ min: "0" }}
+                    error={!!errors.abdominal_reps}
+                    helperText={errors.abdominal_reps?.message}
+                  />
+                )}
+              />
             </Grid>
+            
+            {/* Flexão */}
             <Grid item xs={12} sm={6} md={4}>
-              <TextField fullWidth label="Barra (reps)" name="barra_reps" type="number" inputProps={{ min: "0" }} value={formData.barra_reps} onChange={handleChange} />
+              <Controller
+                name="flexao_reps"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Flexão de Braços (reps)"
+                    type="number"
+                    inputProps={{ min: "0" }}
+                    error={!!errors.flexao_reps}
+                    helperText={errors.flexao_reps?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            {/* Barra */}
+            <Grid item xs={12} sm={6} md={4}>
+              <Controller
+                name="barra_reps"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Barra (reps)"
+                    type="number"
+                    inputProps={{ min: "0" }}
+                    error={!!errors.barra_reps}
+                    helperText={errors.barra_reps?.message}
+                  />
+                )}
+              />
             </Grid>
 
             {/* Mensagens e Botões */}
-            <Grid item xs={12}>{erroForm && <Alert severity="error" sx={{ mb: 2 }}>{erroForm}</Alert>}{sucessoForm && <Alert severity="success" sx={{ mb: 2 }}>{sucessoForm}</Alert>}</Grid>
             <Grid item xs={12}>
-              <Button type="submit" variant="contained" disabled={carregando} size="large">{carregando ? 'Salvando...' : (editId ? 'Salvar Edição' : 'Salvar Novo TAF')}</Button>
-              {editId && <Button type="button" variant="outlined" onClick={handleCancelEdit} disabled={carregando} size="large" sx={{ ml: 2 }}>Cancelar Edição</Button>}
+              {erroApi && <Alert severity="error" sx={{ mb: 2 }}>{erroApi}</Alert>}
+              {sucessoApi && <Alert severity="success" sx={{ mb: 2 }}>{sucessoApi}</Alert>}
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isSubmitting} // Desabilita no envio
+                size="large"
+              >
+                {isSubmitting ? 'Salvando...' : (editId ? 'Salvar Edição' : 'Salvar Novo TAF')}
+              </Button>
+              {editId && (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                  size="large"
+                  sx={{ ml: 2 }}
+                >
+                  Cancelar Edição
+                </Button>
+              )}
             </Grid>
           </Grid>
         </Box>
       </Paper>
 
-      {/* --- Tabela --- */}
+      {/* --- Tabela (sem mudança estrutural, mas agora é mais segura) --- */}
       <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>Histórico de TAFs</Typography>
-      {carregando && logs.length === 0 && <p>Carregando histórico...</p>}
-      {!carregando && logs.length === 0 && !erroForm && <p>Nenhum TAF registrado ainda.</p>}
-      {!carregando && erroForm && <Alert severity="error">{erroForm}</Alert>} {/* Mostra erro ao carregar */}
+      
+      {carregandoDados && logs.length === 0 && <CircularProgress sx={{mt: 2}} />}
+      {!carregandoDados && logs.length === 0 && !erroApi && <p>Nenhum TAF registrado ainda.</p>}
+      {!carregandoDados && erroApi && <Alert severity="error">{erroApi}</Alert>}
 
       {logs.length > 0 && (
         <TableContainer component={Paper} elevation={3}>
-          {/* Ajustar largura mínima para caber tudo */}
           <Table sx={{ minWidth: 1000 }} aria-label="histórico de tafs">
             <TableHead sx={{ backgroundColor: '#f0f0f0' }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 'bold' }}>Data</TableCell>
-                {/* --- Novas Colunas Cabeçalho --- */}
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Peso (kg)</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Altura (m)</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>IMC</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Cintura (cm)</TableCell>
-                {/* --- Fim Novas Colunas Cabeçalho --- */}
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Cooper (m)</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Abdominal</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Flexão</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Barra</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Ações</TableCell>
+                 {/* ... (Cabeçalhos da Tabela: Data, Peso, Altura, IMC, etc... sem mudança) ... */}
+                 <TableCell sx={{ fontWeight: 'bold' }}>Data</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Peso (kg)</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Altura (m)</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>IMC</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Cintura (cm)</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Cooper (m)</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Abdominal</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Flexão</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Menção</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Barra</TableCell>
+                 <TableCell align="center" sx={{ fontWeight: 'bold' }}>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {logs.map((log) => (
-                <TableRow key={log.id} hover> {/* Adiciona hover para destacar linha */}
-                  <TableCell component="th" scope="row">{new Date(log.data_teste).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
-                  {/* --- Novas Colunas Dados --- */}
-                  <TableCell align="center">{log.peso ?? '-'}</TableCell>
-                  <TableCell align="center">{log.altura ? parseFloat(log.altura).toFixed(2) : '-'}</TableCell> {/* Exibe altura em metros formatada */}
-                  <TableCell align="center">{calcularIMC(log.peso, log.altura)}</TableCell> {/* Calcula IMC */}
-                  <TableCell align="center">{log.cintura ?? '-'}</TableCell>
-                  {/* --- Fim Novas Colunas Dados --- */}
-                  <TableCell align="center">{log.cooper_distancia ?? '-'}</TableCell>
-                  <TableCell align="center">{log.mencao_cooper || '-'}</TableCell>
-                  <TableCell align="center">{log.abdominal_reps ?? '-'}</TableCell>
-                  <TableCell align="center">{log.mencao_abdominal || '-'}</TableCell>
-                  <TableCell align="center">{log.flexao_reps ?? '-'}</TableCell>
-                  <TableCell align="center">{log.mencao_flexao || '-'}</TableCell>
-                  <TableCell align="center">{log.barra_reps ?? '-'}</TableCell>
-                  <TableCell align="center">
-                    <IconButton color="primary" onClick={() => handleEdit(log)} aria-label="editar" disabled={carregando}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton color="error" onClick={() => handleDelete(log.id)} aria-label="excluir" disabled={carregando}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
+                <TableRow key={log.id} hover>
+                   {/* ... (Células da Tabela: log.data_teste, calcularIMC, etc... sem mudança) ... */}
+                   <TableCell component="th" scope="row">{new Date(log.data_teste).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</TableCell>
+                   <TableCell align="center">{log.peso ?? '-'}</TableCell>
+                   <TableCell align="center">{log.altura ? parseFloat(log.altura).toFixed(2) : '-'}</TableCell>
+                   <TableCell align="center">{calcularIMC(log.peso, log.altura)}</TableCell>
+                   <TableCell align="center">{log.cintura ?? '-'}</TableCell>
+                   <TableCell align="center">{log.cooper_distancia ?? '-'}</TableCell>
+                   <TableCell align="center">{log.mencao_cooper || '-'}</TableCell>
+                   <TableCell align="center">{log.abdominal_reps ?? '-'}</TableCell>
+                   <TableCell align="center">{log.mencao_abdominal || '-'}</TableCell>
+                   <TableCell align="center">{log.flexao_reps ?? '-'}</TableCell>
+                   <TableCell align="center">{log.mencao_flexao || '-'}</TableCell>
+                   <TableCell align="center">{log.barra_reps ?? '-'}</TableCell>
+                   <TableCell align="center">
+                    <IconButton color="primary" onClick={() => handleEdit(log)} disabled={isSubmitting}><EditIcon /></IconButton>
+                    <IconButton color="error" onClick={() => handleDelete(log.id)} disabled={isSubmitting}><DeleteIcon /></IconButton>
+                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>

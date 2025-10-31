@@ -1,123 +1,144 @@
-// src/pages/CadastroPessoal.jsx
+// src/pages/CadastroPessoal.jsx (Código Completo - Refatorado com validação)
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
 import { useAuth } from '../contexts/AuthContext';
 
-// --- INÍCIO DAS IMPORTAÇÕES DO MUI ---
-import {
-  Box,
-  Button,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  TextField,
-  Typography,
-  Grid,
-  Paper,     // Um "papel" para dar fundo ao formulário
-  Alert
-} from '@mui/material';
-// --- FIM DAS IMPORTAÇÕES DO MUI ---
+// --- NOVAS IMPORTAÇÕES PARA VALIDAÇÃO ---
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+// --- FIM DAS NOVAS IMPORTAÇÕES ---
 
-// A lista de postos permanece
+// --- Importações MUI (algumas novas) ---
+import {
+  Box, Button, Select, MenuItem, InputLabel, FormControl,
+  TextField, Typography, Grid, Paper, Alert, FormHelperText, CircularProgress
+} from '@mui/material';
+
+// Lista de postos
 const LISTA_POSTOS = [
   'Cel', 'Ten Cel', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp',
   'SO', '1S', '2S', '3S', 'Cb', 'S1', 'S2',
   'Cad', 'Aluno'
 ];
 
-export default function CadastroPessoal() {
-  // --- A LÓGICA PERMANECE A MESMA ---
-  const { usuario, logout }  = useAuth(); 
-  const [formData, setFormData] = useState({
-    nome: '',
-    posto: '',
-    data_nascimento: '',
-    sexo: 'Masculino',
-    organizacao_id: '',
-  });
-  const [organizacoes, setOrganizacoes] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState(null);
-  const [sucesso, setSucesso] = useState(null);
+// --- 1. DEFINIÇÃO DO SCHEMA DE VALIDAÇÃO (ZOD) ---
+const perfilSchema = z.object({
+  nome: z.string().min(1, 'Nome completo é obrigatório'),
+  posto: z.string().min(1, 'Posto é obrigatório'),
+  data_nascimento: z.string().optional().nullable(),
+  sexo: z.string(),
+  organizacao_id: z.string().min(1, 'Organização Militar é obrigatória'),
+});
+// --- FIM DO SCHEMA ---
 
+
+export default function CadastroPessoal() {
+  const { logout }  = useAuth(); 
+
+  // --- 2. CONFIGURAÇÃO DO REACT-HOOK-FORM ---
+  const { 
+    control, 
+    handleSubmit, 
+    reset, // Função para carregar dados no formulário
+    formState: { errors, isSubmitting } // Pega o estado de 'enviando'
+  } = useForm({
+    resolver: zodResolver(perfilSchema),
+    defaultValues: { // Valores padrão iniciais (vazios)
+      nome: '',
+      posto: '',
+      data_nascimento: '',
+      sexo: 'Masculino',
+      organizacao_id: '',
+    }
+  });
+  // --- FIM DA CONFIGURAÇÃO ---
+  
+  // Estados que NÃO são do formulário
+  const [organizacoes, setOrganizacoes] = useState([]);
+  const [carregandoDados, setCarregandoDados] = useState(true); // Para o "Carregando..." inicial
+  const [erroApi, setErroApi] = useState(null);
+  const [sucessoApi, setSucessoApi] = useState(null);
+
+  // --- 3. useEffect PARA CARREGAR OS DADOS ---
   useEffect(() => {
-    setCarregando(true);
+    setCarregandoDados(true);
+    setErroApi(null);
     Promise.all([
       apiClient.get('/usuarios/me'),      
       apiClient.get('/listas/organizacoes') 
     ])
     .then(([usuarioResponse, omResponse]) => {
+      
       const { nome, posto, data_nascimento, sexo, organizacao_id } = usuarioResponse.data;
       const dataFormatada = data_nascimento ? data_nascimento.split('T')[0] : '';
 
-      setFormData({
+      // --- 4. POPULANDO O FORMULÁRIO COM reset() ---
+      // Esta é a forma correta de preencher o react-hook-form com dados da API
+      reset({
         nome: nome || '',
         posto: posto || LISTA_POSTOS[0], 
         data_nascimento: dataFormatada,
         sexo: sexo || 'Masculino',
-        organizacao_id: organizacao_id || ''
+        organizacao_id: organizacao_id ? organizacao_id.toString() : '' // Zod/Select esperam string
       });
+
       setOrganizacoes(omResponse.data);
     })
     .catch(error => {
       console.error("Erro ao buscar dados:", error);
-      setErro("Falha ao carregar dados do usuário ou OMs.");
+      setErroApi("Falha ao carregar dados do usuário ou OMs.");
       if (error.response && (error.response.status === 403 || error.response.status === 401)) {
         logout(); 
       }
     })
     .finally(() => {
-      setCarregando(false);
+      setCarregandoDados(false);
     });
-  }, [logout]); // Adicionamos 'logout' como dependência do useEffect
+  }, [logout, reset]); // 'reset' é uma dependência estável
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
+  
+  // --- 5. FUNÇÃO DE SUBMIT (agora 'onSubmit') ---
+  const onSubmit = async (data) => {
+    setErroApi(null);
+    setSucessoApi(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setCarregando(true);
-    setErro(null);
-    setSucesso(null);
     try {
-      const response = await apiClient.put('/usuarios/me', formData);
-      setSucesso("Dados atualizados com sucesso!");
+      // 'data' já contém os dados validados
+      const response = await apiClient.put('/usuarios/me', {
+        ...data,
+        data_nascimento: data.data_nascimento || null // Envia null se vazio
+      });
+      setSucessoApi("Dados atualizados com sucesso!");
+      
     } catch (error) {
       console.error("Erro ao atualizar dados:", error);
       if (error.response && error.response.data && error.response.data.message) {
-        setErro(error.response.data.message);
+        setErroApi(error.response.data.message);
       } else {
-        setErro("Falha ao salvar as alterações.");
+        setErroApi("Falha ao salvar as alterações.");
       }
-    } finally {
-      setCarregando(false);
     }
   };
+  // --- FIM DA FUNÇÃO SUBMIT ---
 
-  if (carregando && !formData.nome) {
-    return <Typography variant="h5">Carregando dados do usuário...</Typography>;
+  // Tela de "Carregando..."
+  if (carregandoDados) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Carregando dados do usuário...</Typography>
+      </Box>
+    );
   }
-  // --- FIM DA LÓGICA ---
 
-
-  // --- INÍCIO DO NOVO JSX COM MUI ---
+  // --- 6. O JSX COM OS 'Controller's ---
   return (
-    // O Paper cria o "card" do formulário
     <Paper 
-      elevation={3} // Sombra nível 3
-      sx={{ 
-        padding: { xs: 2, md: 4 }, // Mais padding em telas maiores
-        maxWidth: '700px', // Limita a largura
-        margin: 'auto' // Centraliza
-      }}
+      elevation={3} 
+      sx={{ padding: { xs: 2, md: 4 }, maxWidth: '700px', margin: 'auto' }}
     >
-      <Box component="form" onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
         <Typography variant="h5" component="h2" gutterBottom>
           Cadastro Pessoal
         </Typography>
@@ -129,103 +150,117 @@ export default function CadastroPessoal() {
           
           {/* NOME */}
           <Grid item xs={12}>
-            <TextField
-              required
-              fullWidth
-              id="nome"
-              label="Nome Completo"
+            <Controller
               name="nome"
-              value={formData.nome}
-              onChange={handleChange}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  required
+                  fullWidth
+                  label="Nome Completo"
+                  error={!!errors.nome}
+                  helperText={errors.nome?.message}
+                />
+              )}
             />
           </Grid>
 
           {/* POSTO (SELECT) */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="posto-label">Posto/Graduação</InputLabel>
-              <Select
-                labelId="posto-label"
-                id="posto"
-                name="posto"
-                value={formData.posto}
-                label="Posto/Graduação"
-                onChange={handleChange}
-              >
-                {LISTA_POSTOS.map(posto => (
-                  <MenuItem key={posto} value={posto}>
-                    {posto}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="posto"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth required error={!!errors.posto}>
+                  <InputLabel id="posto-label">Posto/Graduação</InputLabel>
+                  <Select
+                    {...field}
+                    labelId="posto-label"
+                    label="Posto/Graduação"
+                  >
+                    {LISTA_POSTOS.map(posto => (
+                      <MenuItem key={posto} value={posto}>
+                        {posto}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>{errors.posto?.message}</FormHelperText>
+                </FormControl>
+              )}
+            />
           </Grid>
 
           {/* DATA NASCIMENTO */}
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              id="data_nascimento"
-              label="Data de Nascimento"
+            <Controller
               name="data_nascimento"
-              type="date"
-              value={formData.data_nascimento}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Data de Nascimento"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.data_nascimento}
+                  helperText={errors.data_nascimento?.message}
+                />
+              )}
             />
           </Grid>
 
           {/* SEXO (SELECT) */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel id="sexo-label">Sexo</InputLabel>
-              <Select
-                labelId="sexo-label"
-                id="sexo"
-                name="sexo"
-                value={formData.sexo}
-                label="Sexo"
-                onChange={handleChange}
-              >
-                <MenuItem value="Masculino">Masculino</MenuItem>
-                <MenuItem value="Feminino">Feminino</MenuItem>
-              </Select>
-            </FormControl>
+            <Controller
+              name="sexo"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth required error={!!errors.sexo}>
+                  <InputLabel id="sexo-label">Sexo</InputLabel>
+                  <Select
+                    {...field}
+                    labelId="sexo-label"
+                    label="Sexo"
+                  >
+                    <MenuItem value="Masculino">Masculino</MenuItem>
+                    <MenuItem value="Feminino">Feminino</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.sexo?.message}</FormHelperText>
+                </FormControl>
+              )}
+            />
           </Grid>
           
           {/* ORGANIZAÇÃO MILITAR (SELECT) */}
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel id="om-label">Organização Militar (OM)</InputLabel>
-              <Select
-                labelId="om-label"
-                id="organizacao_id"
-                name="organizacao_id"
-                value={formData.organizacao_id}
-                label="Organização Militar (OM)"
-                onChange={handleChange}
-              >
-                {organizacoes.map(om => (
-                  <MenuItem key={om.id} value={om.id}>
-                    {om.sigla} - {om.nome}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="organizacao_id"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth required error={!!errors.organizacao_id}>
+                  <InputLabel id="om-label">Organização Militar (OM)</InputLabel>
+                  <Select
+                    {...field}
+                    labelId="om-label"
+                    label="Organização Militar (OM)"
+                  >
+                    {organizacoes.map(om => (
+                      <MenuItem key={om.id} value={om.id.toString()}>
+                        {om.sigla} - {om.nome}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>{errors.organizacao_id?.message}</FormHelperText>
+                </FormControl>
+              )}
+            />
           </Grid>
 
-          {/* Mensagens de Erro ou Sucesso */}
+          {/* Mensagens de Erro/Sucesso da API */}
           <Grid item xs={12}>
-            {erro && (
-              <Alert severity="error" sx={{ width: '100%', mt: 1 }}>
-                {erro}
-              </Alert>
-            )}
-            {sucesso && (
-              <Alert severity="success" sx={{ width: '100%', mt: 1 }}>
-                {sucesso}
-              </Alert>
-            )}
+            {erroApi && <Alert severity="error" sx={{ width: '100%', mt: 1 }}>{erroApi}</Alert>}
+            {sucessoApi && <Alert severity="success" sx={{ width: '100%', mt: 1 }}>{sucessoApi}</Alert>}
           </Grid>
           
           {/* Botão Salvar */}
@@ -233,11 +268,11 @@ export default function CadastroPessoal() {
             <Button
               type="submit"
               variant="contained"
-              disabled={carregando}
+              disabled={isSubmitting} // Desabilita enquanto envia
               size="large"
               sx={{ padding: '10px 15px' }}
             >
-              {carregando ? 'Salvando...' : 'Salvar Alterações'}
+              {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </Grid>
 
@@ -245,5 +280,4 @@ export default function CadastroPessoal() {
       </Box>
     </Paper>
   );
-  // --- FIM DO NOVO JSX COM MUI ---
 }
