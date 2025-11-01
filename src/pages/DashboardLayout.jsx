@@ -135,7 +135,7 @@ export default function DashboardLayout() {
           <Typography variant="body2" color="text.secondary" align="center">
             {'© '}
             {new Date().getFullYear()}
-            {' Universidade da Força Aérea - Desenvolvido para o PPGDHO'}
+            {' Universidade da Força Aérea - Desenvolvido por Vinicius Damasceno'}
           </Typography>
         </Container>
       </Box>
