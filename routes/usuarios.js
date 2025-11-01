@@ -1,9 +1,8 @@
-// routes/usuarios.js (Código Completo - Refatorado com validação)
+// routes/usuarios.js (Código Completo - Verifique se o seu está assim)
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
-// --- IMPORTAÇÕES DE VALIDAÇÃO ---
 const { body, validationResult } = require('express-validator');
 
 // Todas as rotas aqui são protegidas
@@ -34,13 +33,13 @@ const updateProfileRules = [
 ];
 
 
-// ROTA: GET /usuarios/me (Buscar meus dados) - Sem mudança
+// ROTA: GET /usuarios/me (Buscar meus dados)
 router.get('/me', async (req, res) => {
   try {
     const usuarioId = req.usuario.usuario_id;
     const resultado = await db.query(
-      `SELECT id, saram, email, nome, posto, data_nascimento, sexo, organizacao_id 
-       FROM Usuario 
+      `SELECT id, saram, email, nome, posto, data_nascimento, sexo, organizacao_id
+       FROM Usuario
        WHERE id = $1`,
       [usuarioId]
     );
@@ -55,19 +54,16 @@ router.get('/me', async (req, res) => {
 });
 
 // ROTA: PUT /usuarios/me (Editar / Salvar meus dados)
-// --- 3. APLICANDO OS MIDDLEWARES NA ROTA ---
-router.put('/me', 
-  updateProfileRules, // 1º Roda as regras
-  validate,           // 2º Checa os erros
-  async (req, res) => { // 3º Roda a lógica de negócio
-  
+router.put('/me',
+  updateProfileRules,
+  validate,
+  async (req, res) => {
   try {
     const usuarioId = req.usuario.usuario_id;
-    // Dados já validados pelo express-validator
     const { nome, posto, data_nascimento, sexo, organizacao_id } = req.body;
-    
+
     const resultado = await db.query(
-      `UPDATE Usuario 
+      `UPDATE Usuario
        SET nome = $1, posto = $2, data_nascimento = $3, sexo = $4, organizacao_id = $5
        WHERE id = $6
        RETURNING id, nome, email, posto, data_nascimento, sexo, organizacao_id`,
@@ -88,6 +84,45 @@ router.put('/me',
     res.status(500).json({ message: "Erro interno no servidor." });
   }
 });
+
+
+// --- 3. ROTA FALTANDO (PROVAVELMENTE) ---
+// ROTA: GET /usuarios/me/historico (Dados para gráficos de evolução)
+router.get('/me/historico', async (req, res) => {
+  try {
+    const usuarioId = req.usuario.usuario_id;
+
+    const resultado = await db.query(
+      `SELECT
+         data_teste,
+         peso,
+         cooper_distancia,
+         flexao_reps,
+         barra_reps
+       FROM LogTACF
+       WHERE usuario_id = $1
+         AND data_teste IS NOT NULL
+       ORDER BY data_teste ASC`, // ASC para gráfico de linha
+      [usuarioId]
+    );
+
+    // Formata os dados para facilitar o uso no Recharts
+    const historicoFormatado = resultado.rows.map(log => ({
+        data: new Date(log.data_teste).toLocaleDateString('pt-BR', { timeZone: 'UTC' }),
+        peso: log.peso ? parseFloat(log.peso) : null,
+        cooper: log.cooper_distancia ? parseInt(log.cooper_distancia, 10) : null,
+        flexao: log.flexao_reps ? parseInt(log.flexao_reps, 10) : null,
+        barra: log.barra_reps ? parseInt(log.barra_reps, 10) : null
+    }));
+
+    res.status(200).json(historicoFormatado);
+
+  } catch (error) {
+    console.error("Erro ao buscar histórico do usuário:", error.message, error.stack);
+    res.status(500).json({ message: "Erro interno no servidor ao buscar histórico." });
+  }
+});
+// --- FIM DA ROTA FALTANDO ---
 
 
 module.exports = router;
