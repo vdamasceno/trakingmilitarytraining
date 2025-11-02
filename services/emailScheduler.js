@@ -12,7 +12,7 @@ function startTfmReminderScheduler() {
   // Esta string "0 18 * * *" é o "formato cron". Significa:
   // "No minuto 0, na hora 18, todos os dias do mês, todos os meses, todos os dias da semana."
   // Em resumo: RODAR TODO DIA ÀS 18:00 (horário do servidor)
-  cron.schedule('* * * * *', async () => {
+  cron.schedule('0 18 * * *', async () => {
     console.log('----------------------------------------------------');
     console.log(`[${new Date().toISOString()}] Executando tarefa agendada: Verificando treinos TFM...`);
 

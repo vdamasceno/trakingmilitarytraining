@@ -5,7 +5,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 // --- Importar o serviço de e-mail ---
-const { initializeEmailService } = require('./services/emailService'); // <<<<< NOVA LINHA
+const { initializeEmailService } = require('./services/emailService');
+const { startTfmReminderScheduler } = require('./services/emailScheduler');
 
 // IMPORTAR ROTAS
 const authRoutes = require('./routes/auth');
@@ -39,11 +40,12 @@ app.listen(PORT, async () => { // <<<<< ADICIONA 'async'
   console.log(`Servidor rodando na porta ${PORT}`);
   
   // --- Inicializa o serviço de e-mail ---
-  //try {
-  //  await initializeEmailService(); // <<<<< NOVA LINHA
-  //  console.log("Serviço de e-mail pronto para testes (Ethereal).");
-  //} catch (error) {
-  //  console.error("Falha grave ao iniciar serviço de e-mail.", error);
-  //}
+  try {
+    await initializeEmailService(); // <<<<< NOVA LINHA
+    console.log("Serviço de e-mail pronto para testes (Ethereal).");
+    startTfmReminderScheduler();
+  } catch (error) {
+    console.error("Falha grave ao iniciar serviços.", error);
+  }
   // --- Fim da inicialização ---
 });
