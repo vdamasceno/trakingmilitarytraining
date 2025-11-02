@@ -13,37 +13,48 @@ import {
   Box, Button, TextField, Typography, Grid, Paper, Alert,
   Select, MenuItem, InputLabel, FormControl, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, IconButton,
-  CircularProgress, Divider, FormHelperText
+  CircularProgress, Divider, FormHelperText, Tooltip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 // Labels (sem mudança)
-const LABELS_CAMPOS = { /* ... (copie o objeto LABELS_CAMPOS do seu arquivo antigo) ... */ };
+const LABELS_CAMPOS = {
+  distancia_km: 'Distância (km)',
+  tempo_min: 'Tempo (min)',
+  pace_min_km: 'Pace (min/km)',
+  fc_media_bpm: 'FC Média (bpm)',
+  distancia_m: 'Distância (m)',
+  ritmo_100m: 'Ritmo (/100m)',
+  tempo_estimulo_s: 'Tempo Estímulo (s)',
+  tempo_recuperacao_s: 'Tempo Recuperação (s)',
+  numero_sessoes: 'Número de Sessões',
+  grupo_muscular: 'Grupo Muscular',
+  duracao_min: 'Duração (min)',
+  nome_atividade: 'Nome da Atividade (ex: Futebol)'
+};
 
 // --- 1. DEFINIÇÃO DO SCHEMA DE VALIDAÇÃO (ZOD) ---
 const optionalNumeric = z.string().optional().transform(val => (val === "" ? undefined : val))
   .refine(val => val === undefined || !isNaN(Number(val)), "Deve ser um número");
 
 const tfmSchema = z.object({
-  // Campos Principais
   data_treino: z.string().min(1, 'Data e Hora são obrigatórios'),
   exercicio_id: z.string().min(1, 'Exercício é obrigatório'),
-  percepcao_intensidade: z.coerce.number().min(0, "Mín. 0").max(10, "Máx. 10"), // coerce.number() converte string para número
-
-  // Campos Dinâmicos (todos opcionais e numéricos ou texto)
+  percepcao_intensidade: z.coerce.number().min(0, "Mín. 0").max(10, "Máx. 10"),
   distancia_km: optionalNumeric,
   tempo_min: optionalNumeric,
-  pace_min_km: z.string().optional(), // Pace pode ser "5:24"
+  pace_min_km: z.string().optional(),
   fc_media_bpm: optionalNumeric,
   distancia_m: optionalNumeric,
-  ritmo_100m: z.string().optional(), // Ritmo pode ser "1:50"
+  ritmo_100m: z.string().optional(),
   tempo_estimulo_s: optionalNumeric,
   tempo_recuperacao_s: optionalNumeric,
   numero_sessoes: optionalNumeric,
   grupo_muscular: z.string().optional(),
   duracao_min: optionalNumeric,
-  nome_atividade: z.string().optional() // Para "Outra Atividade"
+  nome_atividade: z.string().optional()
 });
 // --- FIM DO SCHEMA ---
 
@@ -225,7 +236,7 @@ export default function TFM() {
 
 
   // --- 6. O JSX COM OS 'Controller's ---
-  return (
+return (
     <Box>
       {/* --- Formulário --- */}
       <Paper elevation={3} sx={{ padding: { xs: 2, md: 4 }, marginBottom: 4 }}>
@@ -281,24 +292,8 @@ export default function TFM() {
               />
             </Grid>
 
-            {/* Percepção de Intensidade */}
-            <Grid item xs={12} sm={6}>
-              <Controller
-                name="percepcao_intensidade"
-                control={control}
-                render={({ field }) => (
-                   <TextField
-                    {...field}
-                    fullWidth
-                    label="Percepção de Intensidade (0-10)"
-                    type="number"
-                    InputProps={{ inputProps: { min: 0, max: 10 } }}
-                    error={!!errors.percepcao_intensidade}
-                    helperText={errors.percepcao_intensidade?.message}
-                  />
-                )}
-              />
-            </Grid>
+            {/* ***** CAMPO DE PERCEPÇÃO FOI REMOVIDO DESTE GRID ***** */}
+            
           </Grid>
           
           <Divider sx={{ my: 4 }}> 
@@ -308,8 +303,39 @@ export default function TFM() {
           </Divider>
 
           <Grid container spacing={3}>
-            {renderCamposDinamicos()} {/* A mágica acontece aqui */}
+            {/* Renderiza os campos dinâmicos (distância, tempo, etc.) */}
+            {renderCamposDinamicos()} 
+
+            {/* ***** CAMPO DE PERCEPÇÃO MOVIDO PARA CÁ ***** */}
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Controller
+                  name="percepcao_intensidade"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Percepção de Intensidade (0-10)"
+                      type="number"
+                      InputProps={{ inputProps: { min: 0, max: 10 } }}
+                      error={!!errors.percepcao_intensidade}
+                      helperText={errors.percepcao_intensidade?.message}
+                    />
+                  )}
+                />
+                {/* ***** RÓTULO EXPLICATIVO (TOOLTIP) ADICIONADO ***** */}
+                <Tooltip 
+                  title="Informe seu nível de esforço percebido, onde 0 = Repouso e 10 = Esforço Máximo/Exaustão."
+                  arrow
+                  placement="top"
+                >
+                  <InfoOutlinedIcon color="action" />
+                </Tooltip>
+              </Box>
+            </Grid>
           </Grid>
+          
 
           {/* Mensagens e Botões */}
           <Box sx={{ mt: 4 }}>
