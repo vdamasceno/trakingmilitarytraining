@@ -15,6 +15,7 @@ const usuariosRoutes = require('./routes/usuarios');
 const tacfRoutes = require('./routes/tacf'); // <<<<<<< NOVA LINHA
 const tfmRoutes = require('./routes/tfm');   // <<<<<<< NOVA LINHA
 const adminRoutes = require('./routes/admin');
+const stravaRoutes = require('./routes/strava'); // <<<<< ADICIONE ESTA LINHA
 
 const app = express();
 app.use(cors());
@@ -34,7 +35,7 @@ app.use('/usuarios', usuariosRoutes);
 app.use('/tacf', tacfRoutes); // <<<<<<< NOVA LINHA (prefixo /tacf)
 app.use('/tfm', tfmRoutes);   // <<<<<<< NOVA LINHA (prefixo /tfm)
 app.use('/admin', adminRoutes); // <<<<<<< NOVA LINHA (prefixo /admin)
-
+app.use('/strava', stravaRoutes); // <<<<< ADICIONE ESTA LINHA
 
 app.listen(PORT, async () => { // <<<<< ADICIONA 'async'
   console.log(`Servidor rodando na porta ${PORT}`);

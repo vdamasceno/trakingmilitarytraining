@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
 const { body, validationResult } = require('express-validator');
+const { formatUTCDateString } = require('../utils/dateFormatter');
 
 // Todas as rotas aqui são protegidas
 router.use(authMiddleware);
@@ -38,15 +39,23 @@ router.get('/me', async (req, res) => {
   try {
     const usuarioId = req.usuario.usuario_id;
     const resultado = await db.query(
-      `SELECT id, saram, email, nome, posto, data_nascimento, sexo, organizacao_id
-       FROM Usuario
+      `SELECT id, saram, email, nome, posto, data_nascimento, sexo, organizacao_id 
+       FROM Usuario 
        WHERE id = $1`,
       [usuarioId]
     );
     if (resultado.rows.length === 0) {
       return res.status(404).json({ message: "Usuário não encontrado." });
     }
-    res.status(200).json(resultado.rows[0]);
+
+    // --- INÍCIO DA CORREÇÃO DO FUSO HORÁRIO ---
+    const usuario = resultado.rows[0];
+    // Formata a data de nascimento para AAAA-MM-DD antes de enviar
+    usuario.data_nascimento = formatUTCDateString(usuario.data_nascimento);
+    // --- FIM DA CORREÇÃO ---
+
+    res.status(200).json(usuario); // Envia o objeto 'usuario' modificado
+
   } catch (error) {
     console.error("Erro ao buscar dados do usuário:", error.message);
     res.status(500).json({ message: "Erro interno no servidor." });
@@ -180,7 +189,7 @@ router.get('/me/percentis', async (req, res) => {
         GROUP BY t.usuario_id
       ),
 
-      -- CTE 3: Junta os dados de TAF e TFM (pode haver usuário só com TAF ou só com TFM)
+      -- CTE 3: Junta os dados de TACF e TFM (pode haver usuário só com TACF ou só com TFM)
       Combinado AS (
         SELECT
             COALESCE(taf.usuario_id, tfm.usuario_id) as usuario_id,

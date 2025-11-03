@@ -195,7 +195,7 @@ export default function MinhaEvolucao() {
         <>
           {percentisTaf && (
             <Box sx={{ mb: 4 }}>
-              <Typography variant="h5" gutterBottom>Seu Ranking TAF (vs. Mesmo Sexo e OM)</Typography>
+              <Typography variant="h5" gutterBottom>Seu Ranking TCAF (vs. Mesmo Sexo e OM)</Typography>
               <Grid container spacing={3}>
                 <Grid xs={12} sm={6} md={3}><TrophyCard title="Cooper (12 min)" percentil={percentisTaf.cooper_percentil}/></Grid>
                 <Grid xs={12} sm={6} md={3}><TrophyCard title="Flexão de Braços" percentil={percentisTaf.flexao_percentil}/></Grid>

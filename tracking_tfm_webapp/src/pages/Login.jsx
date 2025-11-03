@@ -54,42 +54,53 @@ export default function Login() {
           alignItems: 'center',
         }}
       >
-        {/* --- Adiciona o Logo --- */}
+        {/* 1. Logo da UNIFA */}
         <img 
           src={unifaLogo} 
           alt="Logo UNIFA" 
-          style={{ height: '100px', marginBottom: '20px' }} // Ajuste o tamanho e margem
+          style={{ height: '80px', marginBottom: '16px' }} // Tamanho ajustado
         />
-        {/* --- Fim do Logo --- */}
-        
-        {/* 1. Ícone bonito de cadeado */}
+
+        {/* 2. Título do App (NOVO) */}
+        <Typography 
+          component="h1" 
+          variant="h5"
+          sx={{ 
+            color: 'primary.main', // Cor azul do tema
+            fontWeight: '600',    // Um pouco mais de peso
+            mb: 2,                // Margem inferior
+            textAlign: 'center'
+          }}
+        >
+          Tracking Military Physical Training
+        </Typography>
+
+        {/* 3. Ícone de Cadeado */}
         <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
           <LockOutlinedIcon />
         </Avatar>
         
-        {/* 2. Título (h1) estilizado */}
-        <Typography component="h1" variant="h5">
+        {/* 4. Título da Página (Login) */}
+        <Typography component="h2" variant="h6"> {/* Mudado de h1/h5 para h2/h6 */}
           Login
         </Typography>
 
-        {/* 3. O formulário vira um <Box> */}
+        {/* 5. Formulário */}
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
           
-          {/* 4. O <input> vira <TextField> */}
           <TextField
             margin="normal"
             required
             fullWidth
             id="saram"
-            label="SARAM" // A label já vem embutida
+            label="SARAM"
             name="saram"
             autoComplete="saram"
-            autoFocus // Foca neste campo ao carregar
+            autoFocus
             value={saram}
             onChange={(e) => setSaram(e.target.value)}
           />
-
-          {/* 5. O <input type="password"> vira <TextField type="password"> */}
+          
           <TextField
             margin="normal"
             required
@@ -103,24 +114,21 @@ export default function Login() {
             onChange={(e) => setSenha(e.target.value)}
           />
 
-          {/* 6. Exibe a mensagem de erro (agora com o <Alert>) */}
           {erro && (
             <Alert severity="error" sx={{ width: '100%', mt: 1 }}>
               {erro}
             </Alert>
           )}
 
-          {/* 7. O <button> vira <Button variant="contained"> */}
           <Button
             type="submit"
             fullWidth
-            variant="contained" // "contained" = Cor de fundo primária
-            sx={{ mt: 3, mb: 2 }} // mt = margin-top, mb = margin-bottom
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }} 
           >
             Entrar
           </Button>
 
-          {/* 8. Link para a página de Registro */}
           <Box sx={{ textAlign: 'center' }}>
             <RouterLink to="/registro" style={{ textDecoration: 'none' }}>
               <Typography variant="body2" color="primary">
@@ -128,7 +136,6 @@ export default function Login() {
               </Typography>
             </RouterLink>
           </Box>
-
         </Box>
       </Box>
     </Container>

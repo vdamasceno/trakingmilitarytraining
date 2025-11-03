@@ -33,7 +33,7 @@ CREATE TABLE Usuario (
     FOREIGN KEY (organizacao_id) REFERENCES OrganizacaoMilitar(id)
 );
 
--- Tabela 3: LogTACF (Resultados do TAF)
+-- Tabela 3: LogTACF (Resultados do TACF)
 CREATE TABLE LogTACF (
     id SERIAL PRIMARY KEY,
     usuario_id INT NOT NULL,

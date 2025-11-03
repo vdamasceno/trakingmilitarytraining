@@ -12,7 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 // --- Importações MUI (algumas novas) ---
 import {
   Box, Button, Select, MenuItem, InputLabel, FormControl,
-  TextField, Typography, Grid, Paper, Alert, FormHelperText, CircularProgress
+  TextField, Typography, Grid, Paper, Alert, FormHelperText, CircularProgress, Divider
 } from '@mui/material';
 
 // Lista de postos
@@ -121,6 +121,26 @@ export default function CadastroPessoal() {
     }
   };
   // --- FIM DA FUNÇÃO SUBMIT ---
+
+  // --- ADICIONE ESTA NOVA FUNÇÃO ---
+  const handleConnectStrava = async () => {
+    try {
+      // 1. Chama o backend (com o token via axios)
+      const response = await apiClient.get('/strava/auth');
+
+      // 2. Pega a URL de autorização que o backend montou
+      const { authUrl } = response.data;
+
+      // 3. Redireciona o navegador do usuário para o Strava
+      window.location.href = authUrl;
+
+    } catch (error) {
+      console.error("Erro ao iniciar conexão com Strava:", error);
+      // (Poderíamos usar o 'setErroApi' aqui para mostrar um Alert)
+      alert("Erro ao tentar conectar com o Strava. Tente novamente.");
+    }
+  };
+  // --- FIM DA ADIÇÃO ---
 
   // Tela de "Carregando..."
   if (carregandoDados) {
@@ -278,6 +298,34 @@ export default function CadastroPessoal() {
 
         </Grid>
       </Box>
+
+      {/* --- INÍCIO DA ADIÇÃO DO BOTÃO STRAVA --- */}
+      <Divider sx={{ my: 4 }}>
+        <Typography>Conexões de Aplicativos</Typography>
+      </Divider>
+
+      <Box>
+        <Typography variant="body1" gutterBottom>
+          Conecte sua conta do Strava para importar seus treinos (corridas, pedaladas, natação) automaticamente para a aba TFM.
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={handleConnectStrava}
+          rel="noopener noreferrer"
+          sx={{ 
+            mt: 1, 
+            backgroundColor: '#FC4C02', // Cor laranja do Strava
+            color: 'white',
+            '&:hover': {
+              backgroundColor: '#e94501' // Cor mais escura no hover
+            } 
+          }}
+        >
+          Conectar com o Strava
+        </Button>
+      </Box>
+      {/* --- FIM DA ADIÇÃO DO BOTÃO STRAVA --- */}          
+
     </Paper>
   );
 }

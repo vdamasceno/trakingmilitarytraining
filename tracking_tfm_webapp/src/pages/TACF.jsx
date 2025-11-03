@@ -75,7 +75,7 @@ export default function TACF() {
       setLogs(response.data);
     } catch (error) {
       console.error("Erro ao buscar TAFs:", error);
-      setErroApi("Falha ao carregar histórico de TAFs.");
+      setErroApi("Falha ao carregar histórico de TCAFs.");
     } finally {
       setCarregandoDados(false);
     }
@@ -190,7 +190,7 @@ export default function TACF() {
       <Paper elevation={3} sx={{ padding: { xs: 2, md: 4 }, marginBottom: 4 }}>
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
           <Typography variant="h5" component="h2" gutterBottom>
-            {editId ? 'Editar Registro de TAF' : 'Inserir Novo TAF'}
+            {editId ? 'Editar Registro de TCAF' : 'Inserir Novo TCAF'}
           </Typography>
           
           <Grid container spacing={3} sx={{ mt: 1 }}>
@@ -361,7 +361,7 @@ export default function TACF() {
                 disabled={isSubmitting} // Desabilita no envio
                 size="large"
               >
-                {isSubmitting ? 'Salvando...' : (editId ? 'Salvar Edição' : 'Salvar Novo TAF')}
+                {isSubmitting ? 'Salvando...' : (editId ? 'Salvar Edição' : 'Salvar Novo TCAF')}
               </Button>
               {editId && (
                 <Button
@@ -381,7 +381,7 @@ export default function TACF() {
       </Paper>
 
       {/* --- Tabela (sem mudança estrutural, mas agora é mais segura) --- */}
-      <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>Histórico de TAFs</Typography>
+      <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>Histórico de TACFs</Typography>
       
       {carregandoDados && logs.length === 0 && <CircularProgress sx={{mt: 2}} />}
       {!carregandoDados && logs.length === 0 && !erroApi && <p>Nenhum TAF registrado ainda.</p>}

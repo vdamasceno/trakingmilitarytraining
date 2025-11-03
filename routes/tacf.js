@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
 const { calculateAge, getMencao } = require('../utils/tafCalculator');
+const { formatUTCDateString } = require('../utils/dateFormatter');
 
 // --- NOVAS IMPORTAÇÕES PARA VALIDAÇÃO ---
 const { body, validationResult } = require('express-validator');
@@ -86,11 +87,11 @@ router.post('/',
        peso || null, alturaEmMetros || null, cintura || null]
     );
 
-    res.status(201).json({ message: "TAF salvo com sucesso!", log: novoLog.rows[0] });
+    res.status(201).json({ message: "TACF salvo com sucesso!", log: novoLog.rows[0] });
 
   } catch (error) {
-    console.error("Erro ao salvar TAF:", error.message, error.stack);
-    res.status(500).json({ message: "Erro interno no servidor ao salvar TAF." });
+    console.error("Erro ao salvar TACF:", error.message, error.stack);
+    res.status(500).json({ message: "Erro interno no servidor ao salvar TACF." });
   }
 });
 
@@ -100,6 +101,7 @@ router.get('/', async (req, res) => {
   console.log('>>> Backend recebeu GET /tacf <<<');
   try {
     const usuarioId = req.usuario.usuario_id;
+
     const logs = await db.query(
       `SELECT 
          id, usuario_id, data_teste, 
@@ -111,9 +113,18 @@ router.get('/', async (req, res) => {
        ORDER BY data_teste DESC`,
       [usuarioId]
     );
-    res.status(200).json(logs.rows);
+
+    // --- INÍCIO DA CORREÇÃO DO FUSO HORÁRIO ---
+    const logsFormatados = logs.rows.map(log => {
+        log.data_teste = formatUTCDateString(log.data_teste);
+        return log;
+    });
+    // --- FIM DA CORREÇÃO ---
+
+    res.status(200).json(logsFormatados); // Envia os logs formatados
+
   } catch (error) {
-    console.error("Erro ao listar TAFs:", error.message, error.stack);
+    console.error("Erro ao listar TACFs:", error.message, error.stack);
     res.status(500).json({ message: "Erro interno no servidor." });
   }
 });
@@ -165,13 +176,13 @@ router.put('/:id',
     );
 
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ message: "Registro de TAF não encontrado ou não pertence a este usuário." });
+      return res.status(404).json({ message: "Registro de TACF não encontrado ou não pertence a este usuário." });
     }
-    res.status(200).json({ message: "TAF atualizado com sucesso!", log: resultado.rows[0] });
+    res.status(200).json({ message: "TACF atualizado com sucesso!", log: resultado.rows[0] });
 
   } catch (error) {
-    console.error("Erro ao atualizar TAF:", error.message, error.stack);
-    res.status(500).json({ message: "Erro interno no servidor ao atualizar TAF." });
+    console.error("Erro ao atualizar TACF:", error.message, error.stack);
+    res.status(500).json({ message: "Erro interno no servidor ao atualizar TACF." });
   }
 });
 
@@ -188,12 +199,12 @@ router.delete('/:id', async (req, res) => {
     );
 
     if (resultado.rowCount === 0) {
-      return res.status(404).json({ message: "Registro de TAF não encontrado ou não pertence a este usuário." });
+      return res.status(404).json({ message: "Registro de TACF não encontrado ou não pertence a este usuário." });
     }
     res.status(204).send();
 
   } catch (error) {
-    console.error("Erro ao excluir TAF:", error.message);
+    console.error("Erro ao excluir TACF:", error.message);
     res.status(500).json({ message: "Erro interno no servidor." });
   }
 });
